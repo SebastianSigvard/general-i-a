@@ -105,3 +105,58 @@ class GeneralaScoreBoard:
             f"{cat.value}: {score if score is not None else '-'}"
             for cat, score in self.scores.items()
         )
+
+
+class GeneralaGame:
+    def __init__(self, player_names: List[str]):
+        self.player_names = player_names
+        self.scoreboards = [GeneralaScoreBoard() for _ in player_names]
+        self.current_player = 0
+        self.round = 0
+        self.dice: List[int] = []
+        self.held: List[int] = []
+        self.roll_number = 1
+        self.finished = False
+        self.num_categories = len(GeneralaRules.CATEGORIES)
+
+    def start_turn(self):
+        self.dice = GeneralaRules.roll_dice()
+        self.held = []
+        self.roll_number = 1
+
+    def roll(self, held: Optional[List[int]] = None):
+        if self.roll_number > GeneralaRules.MAX_ROLLS:
+            raise Exception("No rolls left")
+        self.held = held if held is not None else []
+        self.dice = GeneralaRules.roll_dice(self.held)
+        self.roll_number += 1
+        return self.dice
+
+    def can_score(self):
+        return self.roll_number > 1
+
+    def score(self, category: GeneralaCategory):
+        score = GeneralaRules.score_category(category, self.dice, self.roll_number)
+        if score == "WIN":
+            self.scoreboards[self.current_player].set_score(category, 50)
+            self.finished = True
+            return "WIN"
+        elif isinstance(score, int):
+            self.scoreboards[self.current_player].set_score(category, score)
+            return score
+        else:
+            raise Exception(f"Invalid score: {score}")
+
+    def next_player(self):
+        self.current_player = (self.current_player + 1) % len(self.player_names)
+        if self.current_player == 0:
+            self.round += 1
+        if self.round >= self.num_categories:
+            self.finished = True
+        self.start_turn()
+
+    def get_winner(self):
+        totals = [sb.total_score() for sb in self.scoreboards]
+        max_score = max(totals)
+        winners = [self.player_names[i] for i, t in enumerate(totals) if t == max_score]
+        return winners, totals

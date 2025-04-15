@@ -1,4 +1,9 @@
-from generala import GeneralaRules, GeneralaScoreBoard, GeneralaAction, GeneralaCategory
+from generala import (
+    GeneralaScoreBoard,
+    GeneralaAction,
+    GeneralaCategory,
+    GeneralaGame,
+)
 from typing import List
 
 # Placeholder functions for CLI interaction
@@ -140,61 +145,69 @@ def play_generala_cli() -> None:
         input("Enter name for Player 1: "),
         input("Enter name for Player 2: "),
     ]
-    scoreboards = [GeneralaScoreBoard(), GeneralaScoreBoard()]
-    num_categories = len(GeneralaRules.CATEGORIES)
-    for round_num in range(num_categories):
-        print_scoreboard(scoreboards, player_names)
-        for player_idx, player_name in enumerate(player_names):
-            print(
-                f"\n🌟 {player_name}'s turn (Round {round_num+1}/{num_categories}) 🌟"
+    game = GeneralaGame(player_names)
+    game.start_turn()
+    while not game.finished:
+        print_scoreboard(game.scoreboards, game.player_names)
+        player_name = game.player_names[game.current_player]
+        print(
+            f"\n🌟 {player_name}'s turn (Round {game.round+1}/{game.num_categories}) 🌟"
+        )
+        while True:
+            print(f"\n🎲 Current dice: ", " ".join(f"[{d}]" for d in game.dice))
+            action = prompt_action(
+                game.roll_number,
+                game.GeneralaRules.MAX_ROLLS if hasattr(game, "GeneralaRules") else 3,
             )
-            dice = GeneralaRules.roll_dice()
-            held = []
-            roll_number = 1
-            while roll_number <= GeneralaRules.MAX_ROLLS:
-                print(f"\n🎲 Current dice: ", " ".join(f"[{d}]" for d in dice))
-                action = prompt_action(roll_number, GeneralaRules.MAX_ROLLS)
-                if action == GeneralaAction.ROLL:
-                    if roll_number == GeneralaRules.MAX_ROLLS:
-                        print("No rolls left.")
-                        continue
-                    held = prompt_dice_to_hold(dice, roll_number)
-                    dice = GeneralaRules.roll_dice(held)
-                    roll_number += 1
-                elif action == GeneralaAction.HOLD:
-                    held = prompt_dice_to_hold(dice, roll_number)
-                    dice = GeneralaRules.roll_dice(held)
-                    roll_number += 1
-                elif action == "show_score":
-                    print_scoreboard(scoreboards, player_names)
-                elif action == "score":
-                    category = prompt_category(scoreboards[player_idx], dice)
-                    score = GeneralaRules.score_category(category, dice, roll_number)
-                    if score == "WIN":
-                        print("🏆 Generala served! You win!")
-                        scoreboards[player_idx].set_score(category, 50)
-                        break
-                    if isinstance(score, int):
-                        scoreboards[player_idx].set_score(category, score)
-                        print(f"✅ Scored {score} in {category.value}\n")
-                        break
+            if action == GeneralaAction.ROLL:
+                if (
+                    game.roll_number > game.GeneralaRules.MAX_ROLLS
+                    if hasattr(game, "GeneralaRules")
+                    else 3
+                ):
+                    print("No rolls left.")
+                    continue
+                held = prompt_dice_to_hold(game.dice, game.roll_number)
+                game.roll(held)
+            elif action == GeneralaAction.HOLD:
+                held = prompt_dice_to_hold(game.dice, game.roll_number)
+                game.roll(held)
+            elif action == "show_score":
+                print_scoreboard(game.scoreboards, game.player_names)
+            elif action == "score":
+                available = [
+                    cat
+                    for cat, score in game.scoreboards[
+                        game.current_player
+                    ].scores.items()
+                    if score is None
+                ]
+                print("Available categories:")
+                for i, cat in enumerate(available):
+                    print(f"{i+1}. {cat.value.capitalize()}")
+                choice = input("Choose a category by number: ")
+                try:
+                    idx = int(choice) - 1
+                    if 0 <= idx < len(available):
+                        category = available[idx]
                     else:
-                        print(f"Invalid score returned: {score}\n")
-            else:
-                category = prompt_category(scoreboards[player_idx], dice)
-                score = GeneralaRules.score_category(category, dice, roll_number)
-                if isinstance(score, int):
-                    scoreboards[player_idx].set_score(category, score)
-                    print(f"✅ Scored {score} in {category.value}\n")
+                        category = available[0]
+                except Exception:
+                    category = available[0]
+                result = game.score(category)
+                if result == "WIN":
+                    print("🏆 Generala served! You win!")
+                elif isinstance(result, int):
+                    print(f"✅ Scored {result} in {category.value}\n")
                 else:
-                    print(f"Invalid score returned: {score}\n")
+                    print(f"Invalid score returned: {result}\n")
+                break
+        game.next_player()
     print("\n🎉 Final Scoreboards:")
-    print_scoreboard(scoreboards, player_names)
-    scores = [sb.total_score() for sb in scoreboards]
-    if scores[0] > scores[1]:
-        print(f"🏆 {player_names[0]} wins!")
-    elif scores[1] > scores[0]:
-        print(f"🏆 {player_names[1]} wins!")
+    print_scoreboard(game.scoreboards, game.player_names)
+    winners, totals = game.get_winner()
+    if len(winners) == 1:
+        print(f"🏆 {winners[0]} wins!")
     else:
         print("🤝 It's a tie!")
 
