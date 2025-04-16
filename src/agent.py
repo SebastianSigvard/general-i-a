@@ -6,23 +6,26 @@ from typing import List, Optional
 
 
 class GeneralaQNetwork(nn.Module):
-    def __init__(self, state_dim: int, action_dim: int, hidden_dim: int = 128):
+    def __init__(self, state_dim: int, action_dim: int, hidden_layers: list = [128, 128]):
         super().__init__()
-        self.fc1 = nn.Linear(state_dim, hidden_dim)
-        self.fc2 = nn.Linear(hidden_dim, hidden_dim)
-        self.fc3 = nn.Linear(hidden_dim, action_dim)
+        layers = []
+        input_dim = state_dim
+        for hidden_dim in hidden_layers:
+            layers.append(nn.Linear(input_dim, hidden_dim))
+            layers.append(nn.ReLU())
+            input_dim = hidden_dim
+        layers.append(nn.Linear(input_dim, action_dim))
+        self.net = nn.Sequential(*layers)
 
     def forward(self, x):
-        x = F.relu(self.fc1(x))
-        x = F.relu(self.fc2(x))
-        return self.fc3(x)
+        return self.net(x)
 
 
 class GeneralaQAgent:
     HOLD_ACTIONS = 32  # 2^5 possible hold combinations for 5 dice
 
-    def __init__(self, state_dim: int, action_dim: int, device: str = "cpu"):
-        self.model = GeneralaQNetwork(state_dim, action_dim)
+    def __init__(self, state_dim: int, action_dim: int, device: str = "cpu", hidden_layers: list = [128, 128]):
+        self.model = GeneralaQNetwork(state_dim, action_dim, hidden_layers)
         self.device = device
         self.model.to(device)
         self.action_dim = action_dim

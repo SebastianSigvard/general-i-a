@@ -214,7 +214,9 @@ def play_generala_cli() -> None:
         print("🤝 It's a tie!")
 
 
-def play_generala_cli_vs_agent() -> None:
+def play_generala_cli_vs_agent(checkpoint_path: str = None) -> None:
+    import torch
+
     print("Welcome to Generala! 🎲")
     human_name = input("Enter your name: ")
     agent_name = "QAgent"
@@ -230,6 +232,13 @@ def play_generala_cli_vs_agent() -> None:
         1 + GeneralaQAgent.HOLD_ACTIONS + num_categories
     )  # ROLL + HOLDs + SCOREs
     agent = GeneralaQAgent(state_dim, action_dim)
+    if checkpoint_path:
+        try:
+            checkpoint = torch.load(checkpoint_path, map_location=agent.device)
+            agent.model.load_state_dict(checkpoint)
+            print(f"[INFO] Loaded QAgent checkpoint from {checkpoint_path}")
+        except Exception as e:
+            print(f"[WARNING] Failed to load checkpoint: {e}")
     agent_actions_log = []
     while not game.finished:
         print_scoreboard(game.scoreboards, game.player_names)
@@ -376,11 +385,20 @@ def play_generala_cli_vs_agent() -> None:
 
 
 def main():
+    import sys
+
     print("1. Play Human vs Human")
     print("2. Play Human vs QAgent")
     choice = input("Choose game mode: ")
+    checkpoint_path = None
     if choice.strip() == "2":
-        play_generala_cli_vs_agent()
+        if len(sys.argv) > 1:
+            checkpoint_path = sys.argv[1]
+        else:
+            use_ckpt = input("Load QAgent checkpoint? (y/n): ").strip().lower()
+            if use_ckpt == "y":
+                checkpoint_path = input("Enter checkpoint path: ").strip()
+        play_generala_cli_vs_agent(checkpoint_path)
     else:
         play_generala_cli()
 
