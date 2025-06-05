@@ -125,7 +125,7 @@ class GeneralaGame:
         self.roll_number = 1
 
     def roll(self, held: Optional[List[int]] = None):
-        if self.roll_number > GeneralaRules.MAX_ROLLS:
+        if self.roll_number >= GeneralaRules.MAX_ROLLS:
             raise Exception("No rolls left")
         self.held = held if held is not None else []
         self.dice = GeneralaRules.roll_dice(self.held)
