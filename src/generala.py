@@ -3,6 +3,14 @@ from collections import defaultdict
 import random
 from typing import List, Optional, Dict, Union
 
+from validation import (
+    validate_dice_list,
+    validate_dice_count,
+    validate_roll_number,
+    validate_held_dice_count,
+    validate_player_names,
+)
+
 
 class GeneralaAction(Enum):
     ROLL = "roll"
@@ -34,6 +42,11 @@ class GeneralaRules:
     def roll_dice(held: Optional[List[int]] = None) -> List[int]:
         if held is None:
             held = []
+        
+        # Input validation
+        validate_held_dice_count(held, GeneralaRules.DICE_COUNT)
+        validate_dice_list(held, allow_empty=True)
+        
         return held + [
             random.randint(1, 6) for _ in range(GeneralaRules.DICE_COUNT - len(held))
         ]
@@ -42,6 +55,11 @@ class GeneralaRules:
     def score_category(
         category: GeneralaCategory, dice: List[int], roll_number: int = 1
     ) -> Union[int, str]:
+        # Input validation
+        validate_dice_list(dice)
+        validate_dice_count(dice, GeneralaRules.DICE_COUNT)
+        validate_roll_number(roll_number, GeneralaRules.MAX_ROLLS)
+        
         counts = {i: dice.count(i) for i in range(1, 7)}
         bonus = (
             5
@@ -68,12 +86,12 @@ class GeneralaRules:
             return counts[6] * 6
         elif category == GeneralaCategory.ESCALERA:
             return (
-                25 + bonus if sorted(dice) in ([1, 2, 3, 4, 5], [2, 3, 4, 5, 6]) else 0
+                20 + bonus if sorted(dice) in ([1, 2, 3, 4, 5], [2, 3, 4, 5, 6]) else 0
             )
         elif category == GeneralaCategory.FULL:
-            return 35 + bonus if sorted(counts.values())[-2:] == [2, 3] else 0
+            return 30 + bonus if sorted(counts.values())[-2:] == [2, 3] else 0
         elif category == GeneralaCategory.POKER:
-            return 45 + bonus if 4 in counts.values() else 0
+            return 40 + bonus if 4 in counts.values() else 0
         elif category == GeneralaCategory.GENERALA:
             if 5 in counts.values():
                 if roll_number == 1:
@@ -109,6 +127,7 @@ class GeneralaScoreBoard:
 
 class GeneralaGame:
     def __init__(self, player_names: List[str]):
+        validate_player_names(player_names)
         self.player_names = player_names
         self.scoreboards = [GeneralaScoreBoard() for _ in player_names]
         self.current_player = 0
@@ -133,9 +152,12 @@ class GeneralaGame:
         return self.dice
 
     def can_score(self):
-        return self.roll_number > 1
+        return self.roll_number > 0
 
     def score(self, category: GeneralaCategory):
+        if not self.can_score():
+            raise ValueError("Cannot score before making at least one roll")
+        
         score = GeneralaRules.score_category(category, self.dice, self.roll_number)
         if score == "WIN":
             self.scoreboards[self.current_player].set_score(category, 50)
