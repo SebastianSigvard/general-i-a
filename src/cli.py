@@ -3,6 +3,7 @@ from generala import (
     GeneralaAction,
     GeneralaCategory,
     GeneralaGame,
+    GeneralaRules,
 )
 from typing import List
 import sys
@@ -159,14 +160,10 @@ def play_generala_cli() -> None:
             print(f"\n🎲 Current dice: ", " ".join(f"[{d}]" for d in game.dice))
             action = prompt_action(
                 game.roll_number,
-                game.GeneralaRules.MAX_ROLLS if hasattr(game, "GeneralaRules") else 3,
+                GeneralaRules.MAX_ROLLS,
             )
             if action == GeneralaAction.ROLL:
-                if (
-                    game.roll_number > game.GeneralaRules.MAX_ROLLS
-                    if hasattr(game, "GeneralaRules")
-                    else 3
-                ):
+                if game.roll_number >= GeneralaRules.MAX_ROLLS:
                     print("No rolls left.")
                     continue
                 held = prompt_dice_to_hold(game.dice, game.roll_number)
@@ -274,18 +271,10 @@ def play_generala_cli_vs_agent(checkpoint_path: str = None) -> None:
             else:
                 action = prompt_action(
                     game.roll_number,
-                    (
-                        game.GeneralaRules.MAX_ROLLS
-                        if hasattr(game, "GeneralaRules")
-                        else 3
-                    ),
+                    GeneralaRules.MAX_ROLLS,
                 )
             if action == GeneralaAction.ROLL:
-                if (
-                    game.roll_number > game.GeneralaRules.MAX_ROLLS
-                    if hasattr(game, "GeneralaRules")
-                    else 3
-                ):
+                if game.roll_number >= GeneralaRules.MAX_ROLLS:
                     print("No rolls left.")
                     if is_agent:
                         # Force agent to score if it tries to roll with no rolls left
