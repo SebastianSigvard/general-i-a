@@ -36,3 +36,5 @@ poetry run python src/cli.py
 - `src/cli.py`: Main CLI interface for playing Generala
 - `src/generala.py`: Game logic, rules, and scoring
 - `notebook/`: Example Jupyter notebooks for experimentation
+
+Hello World!
